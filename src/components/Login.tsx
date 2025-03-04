@@ -37,7 +37,6 @@ export default function Login() {
                 <Scissors className="h-10 w-10 text-indigo-600" />
               </div>
               <h2 className="text-3xl font-bold text-gray-900">Barbearia Sarty</h2>
-              <p className="mt-2 text-sm text-gray-600">Use barber@admin.com com a senha que você definiu</p>
             </div>
             
             {error && (
