@@ -6,6 +6,24 @@ import BookingForm from './components/BookingForm';
 import Dashboard from './components/Dashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<BookingForm />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          {/* Redirecionamento para página inicial se não encontrar a rota */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
+
+export default App;
+
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { session } = useAuth();
   return session ? <>{children}</> : <Navigate to="/login" />;
