@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, Scissors, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
-  const [email, setEmail] = useState('barber@admin.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,7 @@ export default function Login() {
                     type="email"
                     id="email"
                     className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                    value={email}
+                    defaultValue=""
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="E-mail"
                     required
