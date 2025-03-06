@@ -7,12 +7,14 @@ Um sistema completo de agendamento para barbearias, permitindo que clientes agen
 ## 🚀 Funcionalidades
 
 ### Para Clientes
+
 - Agendamento de horários com escolha de data e hora
 - Interface intuitiva e responsiva
 - Confirmação via WhatsApp após o agendamento
 - Verificação de disponibilidade em tempo real
 
 ### Para Profissionais
+
 - Painel de controle para gerenciar todos os agendamentos
 - Confirmação ou cancelamento de agendamentos
 - Visualização de agendamentos por período (hoje, futuros, passados)
@@ -22,6 +24,7 @@ Um sistema completo de agendamento para barbearias, permitindo que clientes agen
 ## 🛠️ Tecnologias Utilizadas
 
 ### Frontend
+
 - React.js com TypeScript
 - Tailwind CSS para estilização
 - React Router para navegação
@@ -30,6 +33,7 @@ Um sistema completo de agendamento para barbearias, permitindo que clientes agen
 - Date-fns para manipulação de datas
 
 ### Backend
+
 - Spring Boot
 - Spring Security
 - Spring Data JPA
@@ -72,12 +76,14 @@ Um sistema completo de agendamento para barbearias, permitindo que clientes agen
 ## 🚀 Como Executar
 
 ### Pré-requisitos
+
 - Node.js (v16+)
 - Java 17
 - PostgreSQL
 - Conta no Supabase
 
 ### Frontend
+
 1. Clone o repositório
 2. Instale as dependências:
    ```bash
@@ -94,6 +100,7 @@ Um sistema completo de agendamento para barbearias, permitindo que clientes agen
    ```
 
 ### Backend
+
 1. Configure o banco de dados PostgreSQL
 2. Atualize as configurações em `backend/src/main/resources/application.properties`
 3. Execute o backend:
@@ -102,20 +109,16 @@ Um sistema completo de agendamento para barbearias, permitindo que clientes agen
    ./mvnw spring-boot:run
    ```
 
-## 🔐 Autenticação
-
-### Credenciais de Acesso
-- Email: barber@admin.com
-- Senha: acesso123
-
 ## 📱 Telas do Sistema
 
 ### Agendamento (Cliente)
+
 - Formulário intuitivo para agendamento
 - Seleção de data e hora
 - Confirmação via WhatsApp
 
 ### Dashboard (Profissional)
+
 - Visão geral de todos os agendamentos
 - Filtros por status (pendente, confirmado, cancelado)
 - Busca por nome de cliente
@@ -124,6 +127,7 @@ Um sistema completo de agendamento para barbearias, permitindo que clientes agen
 ## 📊 Banco de Dados
 
 ### Tabelas Principais
+
 - `professionals`: Armazena informações dos profissionais
 - `appointments`: Registra todos os agendamentos
 
