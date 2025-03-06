@@ -63,6 +63,7 @@ export default function Login() {
                     className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    placeholder="E-mail"
                     required
                   />
                 </div>
