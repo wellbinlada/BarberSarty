@@ -6,6 +6,7 @@ import BookingForm from './components/BookingForm';
 import Dashboard from './components/Dashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
+
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { session } = useAuth();
   return session ? <>{children}</> : <Navigate to="/login" />;
