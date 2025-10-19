@@ -76,3 +76,4 @@ CREATE POLICY "Clients can read own appointments"
 
 -- Update existing appointments to have null client_id (they were created before client system)
 -- This is safe since we're not changing existing data, just adding the column
+

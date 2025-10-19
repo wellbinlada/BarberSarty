@@ -77,19 +77,38 @@ export default function Dashboard() {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-      // Usar o ID do usuário logado diretamente como professional_id
-      const professionalId = session?.user?.id;
+      // Buscar o profissional pelo email do usuário logado
+      const userEmail = session?.user?.email;
 
-      if (!professionalId) {
+      if (!userEmail) {
         throw new Error("Usuário não logado");
       }
 
-      console.log("Buscando agendamentos para profissional:", professionalId);
+      console.log("Buscando profissional com email:", userEmail);
 
+      // Primeiro, buscar o profissional pelo email
+      const { data: professionalData, error: profError } = await supabase
+        .from("professionals")
+        .select("id")
+        .eq("email", userEmail)
+        .single();
+
+      if (profError) {
+        console.error("Erro ao buscar profissional:", profError);
+        throw profError;
+      }
+
+      if (!professionalData) {
+        throw new Error("Profissional não encontrado");
+      }
+
+      console.log("Profissional encontrado:", professionalData);
+
+      // Buscar agendamentos do profissional
       const { data, error } = await supabase
         .from("appointments")
         .select("*")
-        .eq("professional_id", professionalId)
+        .eq("professional_id", professionalData.id)
         .order("date", { ascending: true })
         .order("time", { ascending: true });
 
