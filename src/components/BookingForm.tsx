@@ -62,6 +62,21 @@ export default function BookingForm() {
 
   const fetchProfessional = async () => {
     try {
+      // Se o usuário estiver logado como profissional, buscar pelo email
+      if (session?.user?.email === "barber@admin.com") {
+        const { data, error } = await supabase
+          .from("professionals")
+          .select("id, name, phone_number")
+          .eq("email", session.user.email)
+          .single();
+        if (error) throw error;
+        if (data) {
+          setProfessional(data);
+          return;
+        }
+      }
+
+      // Fallback para o profissional padrão
       const { data, error } = await supabase
         .from("professionals")
         .select("id, name, phone_number")
@@ -76,7 +91,7 @@ export default function BookingForm() {
 
   const fetchClient = async () => {
     if (!session?.user?.id) return;
-    
+
     try {
       const { data, error } = await supabase
         .from("clients")
@@ -137,7 +152,7 @@ export default function BookingForm() {
         time,
         professional_id: professional.id,
         status: "pending",
-        ...(session?.user?.id && { client_id: session.user.id })
+        ...(session?.user?.id && { client_id: session.user.id }),
       };
 
       const { error: appointmentError } = await supabase
@@ -181,7 +196,7 @@ export default function BookingForm() {
           <div className="flex items-center space-x-2">
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <UserCircle className="h-5 w-5" />
-              <span>{client?.name || 'Cliente'}</span>
+              <span>{client?.name || "Cliente"}</span>
             </div>
             <button
               onClick={signOut}
@@ -208,19 +223,20 @@ export default function BookingForm() {
           </div>
         )}
       </div>
-      
+
       {!session && (
         <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md">
           <div className="flex">
             <div className="ml-3">
               <p className="text-sm text-blue-700">
-                <strong>Dica:</strong> Faça login ou cadastre-se para ter uma experiência mais personalizada e acompanhar seus agendamentos.
+                <strong>Dica:</strong> Faça login ou cadastre-se para ter uma
+                experiência mais personalizada e acompanhar seus agendamentos.
               </p>
             </div>
           </div>
         </div>
       )}
-      
+
       {success && (
         <div
           className="bg-green-100 border border-green-400 text-green-700 p-4 rounded-md text-center"
@@ -265,7 +281,7 @@ export default function BookingForm() {
               id="name"
               placeholder="Nome completo"
               className={`w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg focus:ring focus:ring-indigo-300 focus:border-indigo-500 ${
-                session ? 'bg-gray-50' : ''
+                session ? "bg-gray-50" : ""
               }`}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -338,13 +354,13 @@ export default function BookingForm() {
           )}
         </button>
       </form>
-      
+
       {session && (
         <div className="mt-8 pt-6 border-t border-gray-200">
           <ClientAppointments />
         </div>
       )}
-      
+
       <p className="text-center text-sm text-gray-500 mt-6">
         © 2025 • Desenvolvido por Keven M
       </p>

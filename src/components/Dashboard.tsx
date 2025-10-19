@@ -137,16 +137,42 @@ export default function Dashboard() {
     try {
       console.log(`Atualizando agendamento ${id} para status: ${newStatus}`);
 
-      // First, update in Supabase
+      // Buscar o profissional pelo email do usuário logado
+      const userEmail = session?.user?.email;
+
+      if (!userEmail) {
+        throw new Error("Usuário não logado");
+      }
+
+      const { data: professionalData, error: profError } = await supabase
+        .from("professionals")
+        .select("id")
+        .eq("email", userEmail)
+        .single();
+
+      if (profError || !professionalData) {
+        throw new Error("Profissional não encontrado");
+      }
+
+      console.log("Profissional ID para atualização:", professionalData.id);
+
+      // Update in Supabase with professional_id check
       const { data: updatedData, error: supabaseError } = await supabase
         .from("appointments")
         .update({ status: newStatus })
         .eq("id", id)
+        .eq("professional_id", professionalData.id)
         .select();
 
       if (supabaseError) {
         console.error("Erro do Supabase:", supabaseError);
         throw supabaseError;
+      }
+
+      if (!updatedData || updatedData.length === 0) {
+        throw new Error(
+          "Agendamento não encontrado ou não pertence a este profissional"
+        );
       }
 
       console.log("Dados atualizados no Supabase:", updatedData);
@@ -232,6 +258,23 @@ export default function Dashboard() {
     setEditError("");
 
     try {
+      // Buscar o profissional pelo email do usuário logado
+      const userEmail = session?.user?.email;
+
+      if (!userEmail) {
+        throw new Error("Usuário não logado");
+      }
+
+      const { data: professionalData, error: profError } = await supabase
+        .from("professionals")
+        .select("id")
+        .eq("email", userEmail)
+        .single();
+
+      if (profError || !professionalData) {
+        throw new Error("Profissional não encontrado");
+      }
+
       // Verificar se o novo horário não conflita com outros agendamentos
       const { data: conflictingAppointments, error: checkError } =
         await supabase
@@ -239,7 +282,8 @@ export default function Dashboard() {
           .select("id")
           .eq("date", editingAppointment.date)
           .eq("time", editingAppointment.time)
-          .neq("id", editingAppointment.id);
+          .neq("id", editingAppointment.id)
+          .eq("professional_id", professionalData.id);
 
       if (checkError) throw checkError;
 
@@ -249,17 +293,25 @@ export default function Dashboard() {
         return;
       }
 
-      // Atualizar o agendamento
-      const { error: updateError } = await supabase
+      // Atualizar o agendamento com verificação de professional_id
+      const { data: updatedData, error: updateError } = await supabase
         .from("appointments")
         .update({
           client_name: editingAppointment.client_name,
           date: editingAppointment.date,
           time: editingAppointment.time,
         })
-        .eq("id", editingAppointment.id);
+        .eq("id", editingAppointment.id)
+        .eq("professional_id", professionalData.id)
+        .select();
 
       if (updateError) throw updateError;
+
+      if (!updatedData || updatedData.length === 0) {
+        throw new Error(
+          "Agendamento não encontrado ou não pertence a este profissional"
+        );
+      }
 
       // Atualizar estado local
       setAppointments((prevAppointments) =>
