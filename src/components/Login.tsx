@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, Scissors, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
@@ -120,8 +120,11 @@ export default function Login() {
             </form>
             
             <div className="mt-8 text-center">
-              <p className="text-xs text-gray-500">
-                Acesso restrito a profissionais cadastrados
+              <p className="text-sm text-gray-600">
+                Não tem uma conta?{' '}
+                <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+                  Cadastre-se aqui
+                </Link>
               </p>
             </div>
           </div>

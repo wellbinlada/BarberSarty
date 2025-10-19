@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
 import Login from './components/Login';
+import Register from './components/Register';
 import BookingForm from './components/BookingForm';
 import Dashboard from './components/Dashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -32,6 +33,7 @@ function App() {
             <Routes>
               <Route path="/" element={<BookingForm />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
               <Route
                 path="/dashboard"
                 element={

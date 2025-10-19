@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
 import {
   MessageSquare,
   Calendar,
@@ -7,8 +8,12 @@ import {
   User,
   AlertCircle,
   CheckCircle,
+  LogOut,
+  UserCircle,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
+import ClientAppointments from "./ClientAppointments";
 
 interface Professional {
   id: string;
@@ -16,15 +21,24 @@ interface Professional {
   phone_number: string;
 }
 
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+}
+
 const DEFAULT_PROFESSIONAL_ID = "00000000-0000-0000-0000-000000000000";
 
 export default function BookingForm() {
+  const { session, signOut } = useAuth();
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [professional, setProfessional] = useState<Professional | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [bookingData, setBookingData] = useState<{
     name: string;
     date: string;
@@ -41,7 +55,10 @@ export default function BookingForm() {
   useEffect(() => {
     fetchProfessional();
     fetchExistingAppointments();
-  }, []);
+    if (session) {
+      fetchClient();
+    }
+  }, [session]);
 
   const fetchProfessional = async () => {
     try {
@@ -54,6 +71,25 @@ export default function BookingForm() {
       if (data) setProfessional(data);
     } catch (err) {
       setError("Erro ao carregar informações do profissional");
+    }
+  };
+
+  const fetchClient = async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name, email, phone")
+        .eq("id", session.user.id)
+        .single();
+      if (error) throw error;
+      if (data) {
+        setClient(data);
+        setName(data.name); // Pre-fill name if user is logged in
+      }
+    } catch (err) {
+      console.error("Erro ao carregar informações do cliente:", err);
     }
   };
 
@@ -95,17 +131,18 @@ export default function BookingForm() {
     }
 
     try {
+      const appointmentData = {
+        client_name: name,
+        date,
+        time,
+        professional_id: professional.id,
+        status: "pending",
+        ...(session?.user?.id && { client_id: session.user.id })
+      };
+
       const { error: appointmentError } = await supabase
         .from("appointments")
-        .insert([
-          {
-            client_name: name,
-            date,
-            time,
-            professional_id: professional.id,
-            status: "pending",
-          },
-        ]);
+        .insert([appointmentData]);
       if (appointmentError) throw appointmentError;
 
       setSuccess(true);
@@ -136,9 +173,54 @@ export default function BookingForm() {
 
   return (
     <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6 space-y-6 border border-gray-200">
-      <h2 className="text-2xl font-bold text-center text-indigo-600">
-        Agende seu horário
-      </h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-indigo-600">
+          Agende seu horário
+        </h2>
+        {session ? (
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <UserCircle className="h-5 w-5" />
+              <span>{client?.name || 'Cliente'}</span>
+            </div>
+            <button
+              onClick={signOut}
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              title="Sair"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex space-x-2">
+            <Link
+              to="/login"
+              className="px-3 py-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+            >
+              Entrar
+            </Link>
+            <Link
+              to="/register"
+              className="px-3 py-1 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+            >
+              Cadastrar
+            </Link>
+          </div>
+        )}
+      </div>
+      
+      {!session && (
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-blue-700">
+                <strong>Dica:</strong> Faça login ou cadastre-se para ter uma experiência mais personalizada e acompanhar seus agendamentos.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {success && (
         <div
           className="bg-green-100 border border-green-400 text-green-700 p-4 rounded-md text-center"
@@ -182,11 +264,13 @@ export default function BookingForm() {
               type="text"
               id="name"
               placeholder="Nome completo"
-              className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg focus:ring focus:ring-indigo-300 focus:border-indigo-500"
+              className={`w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg focus:ring focus:ring-indigo-300 focus:border-indigo-500 ${
+                session ? 'bg-gray-50' : ''
+              }`}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              disabled={isSubmitting}
+              disabled={isSubmitting || session}
             />
           </div>
         </div>
@@ -254,7 +338,14 @@ export default function BookingForm() {
           )}
         </button>
       </form>
-      <p className="text-center text-sm text-gray-500">
+      
+      {session && (
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <ClientAppointments />
+        </div>
+      )}
+      
+      <p className="text-center text-sm text-gray-500 mt-6">
         © 2025 • Desenvolvido por Keven M
       </p>
     </div>

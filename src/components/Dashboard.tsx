@@ -16,6 +16,9 @@ import {
   ChevronDown,
   Scissors,
   AlertCircle,
+  Edit,
+  Save,
+  X,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -27,6 +30,13 @@ interface Appointment {
   time: string;
   status: "pending" | "confirmed" | "cancelled";
   created_at: string;
+}
+
+interface EditAppointmentData {
+  id: string;
+  client_name: string;
+  date: string;
+  time: string;
 }
 
 export default function Dashboard() {
@@ -42,6 +52,10 @@ export default function Dashboard() {
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [editingAppointment, setEditingAppointment] =
+    useState<EditAppointmentData | null>(null);
+  const [showEditModal, setShowEditModal] = useState<boolean>(false);
+  const [editError, setEditError] = useState<string>("");
   const { session, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -63,16 +77,32 @@ export default function Dashboard() {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
+      // Usar o ID do usuário logado diretamente como professional_id
+      const professionalId = session?.user?.id;
+
+      if (!professionalId) {
+        throw new Error("Usuário não logado");
+      }
+
+      console.log("Buscando agendamentos para profissional:", professionalId);
+
       const { data, error } = await supabase
         .from("appointments")
         .select("*")
+        .eq("professional_id", professionalId)
         .order("date", { ascending: true })
         .order("time", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar agendamentos:", error);
+        throw error;
+      }
+
+      console.log("Agendamentos carregados:", data);
       setAppointments(data as Appointment[]);
       setError("");
     } catch (err: any) {
+      console.error("Erro completo:", err);
       setError("Erro ao carregar agendamentos: " + err.message);
     } finally {
       setLoading(false);
@@ -86,14 +116,21 @@ export default function Dashboard() {
   ) => {
     setActionInProgress(id);
     try {
+      console.log(`Atualizando agendamento ${id} para status: ${newStatus}`);
+
       // First, update in Supabase
-      const { error: supabaseError } = await supabase
+      const { data: updatedData, error: supabaseError } = await supabase
         .from("appointments")
         .update({ status: newStatus })
         .eq("id", id)
         .select();
 
-      if (supabaseError) throw supabaseError;
+      if (supabaseError) {
+        console.error("Erro do Supabase:", supabaseError);
+        throw supabaseError;
+      }
+
+      console.log("Dados atualizados no Supabase:", updatedData);
 
       // If successful, update local state
       setAppointments((prevAppointments) =>
@@ -138,6 +175,99 @@ export default function Dashboard() {
       return;
     }
     await updateAppointmentStatus(id, "cancelled");
+  };
+
+  const openEditModal = (appointment: Appointment) => {
+    setEditingAppointment({
+      id: appointment.id,
+      client_name: appointment.client_name,
+      date: appointment.date,
+      time: appointment.time,
+    });
+    setShowEditModal(true);
+    setEditError("");
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingAppointment(null);
+    setEditError("");
+  };
+
+  const handleEditChange = (
+    field: keyof EditAppointmentData,
+    value: string
+  ) => {
+    if (editingAppointment) {
+      setEditingAppointment({
+        ...editingAppointment,
+        [field]: value,
+      });
+    }
+  };
+
+  const saveEditedAppointment = async () => {
+    if (!editingAppointment) return;
+
+    setActionInProgress(editingAppointment.id);
+    setEditError("");
+
+    try {
+      // Verificar se o novo horário não conflita com outros agendamentos
+      const { data: conflictingAppointments, error: checkError } =
+        await supabase
+          .from("appointments")
+          .select("id")
+          .eq("date", editingAppointment.date)
+          .eq("time", editingAppointment.time)
+          .neq("id", editingAppointment.id);
+
+      if (checkError) throw checkError;
+
+      if (conflictingAppointments && conflictingAppointments.length > 0) {
+        setEditError("Este horário já está ocupado por outro agendamento.");
+        setActionInProgress(null);
+        return;
+      }
+
+      // Atualizar o agendamento
+      const { error: updateError } = await supabase
+        .from("appointments")
+        .update({
+          client_name: editingAppointment.client_name,
+          date: editingAppointment.date,
+          time: editingAppointment.time,
+        })
+        .eq("id", editingAppointment.id);
+
+      if (updateError) throw updateError;
+
+      // Atualizar estado local
+      setAppointments((prevAppointments) =>
+        prevAppointments.map((appointment) =>
+          appointment.id === editingAppointment.id
+            ? {
+                ...appointment,
+                client_name: editingAppointment.client_name,
+                date: editingAppointment.date,
+                time: editingAppointment.time,
+              }
+            : appointment
+        )
+      );
+
+      setSuccessMessage({
+        message: "Agendamento editado com sucesso!",
+        type: "success",
+      });
+
+      closeEditModal();
+    } catch (err: any) {
+      console.error("Error editing appointment:", err);
+      setEditError(`Erro ao editar agendamento: ${err.message}`);
+    } finally {
+      setActionInProgress(null);
+    }
   };
 
   const handleSignOut = async () => {
@@ -257,6 +387,24 @@ export default function Dashboard() {
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex gap-2 justify-center">
+                      <button
+                        onClick={() =>
+                          openEditModal({
+                            id,
+                            client_name,
+                            date,
+                            time,
+                            status,
+                            created_at,
+                          })
+                        }
+                        className="text-blue-600 hover:text-blue-900 bg-blue-50 p-1.5 rounded-full transition-colors disabled:opacity-50"
+                        title="Editar"
+                        disabled={actionInProgress === id}
+                        aria-label="Editar agendamento"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
                       {status !== "confirmed" && (
                         <button
                           onClick={() => confirmAppointment(id)}
@@ -500,6 +648,107 @@ export default function Dashboard() {
       <div className="text-center text-sm text-gray-500 py-4 border-t border-gray-200 mt-8">
         © 2025 • Desenvolvido por Keven M
       </div>
+
+      {/* Modal de Edição */}
+      {showEditModal && editingAppointment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                  <Edit className="w-5 h-5 mr-2 text-blue-600" />
+                  Editar Agendamento
+                </h3>
+                <button
+                  onClick={closeEditModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label="Fechar modal"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {editError && (
+                <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+                  <div className="flex">
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                    <p className="ml-3 text-sm text-red-700">{editError}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nome do Cliente
+                  </label>
+                  <input
+                    type="text"
+                    value={editingAppointment.client_name}
+                    onChange={(e) =>
+                      handleEditChange("client_name", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Nome completo"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Data
+                  </label>
+                  <input
+                    type="date"
+                    value={editingAppointment.date}
+                    onChange={(e) => handleEditChange("date", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    min="2025-01-01"
+                    max="2028-12-31"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Horário
+                  </label>
+                  <input
+                    type="time"
+                    value={editingAppointment.time}
+                    onChange={(e) => handleEditChange("time", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={closeEditModal}
+                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={saveEditedAppointment}
+                  disabled={actionInProgress === editingAppointment.id}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
+                >
+                  {actionInProgress === editingAppointment.id ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Salvar
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
