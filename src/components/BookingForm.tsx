@@ -35,8 +35,8 @@ export default function BookingForm() {
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const minDate = "2025-01-01";
-  const maxDate = "2027-12-31";
+  const minDate = "2025-09-01";
+  const maxDate = "2028-12-31";
 
   useEffect(() => {
     fetchProfessional();
