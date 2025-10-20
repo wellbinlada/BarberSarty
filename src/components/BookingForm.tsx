@@ -60,30 +60,53 @@ export default function BookingForm() {
     }
   }, [session]);
 
+  // Refetch existing appointments when a professional is resolved
+  useEffect(() => {
+    if (professional?.id) {
+      fetchExistingAppointments(professional.id);
+    }
+  }, [professional?.id]);
+
   const fetchProfessional = async () => {
     try {
-      // Se o usuário estiver logado como profissional, buscar pelo email
-      if (session?.user?.email === "barber@admin.com") {
-        const { data, error } = await supabase
-          .from("professionals")
-          .select("id, name, phone_number")
-          .eq("email", session.user.email)
-          .single();
-        if (error) throw error;
-        if (data) {
-          setProfessional(data);
-          return;
-        }
-      }
+      let resolvedProfessional: Professional | null = null;
 
-      // Fallback para o profissional padrão
-      const { data, error } = await supabase
+      // 1) Tenta pelo ID padrão
+      const { data: byId, error: byIdError } = await supabase
         .from("professionals")
         .select("id, name, phone_number")
         .eq("id", DEFAULT_PROFESSIONAL_ID)
-        .single();
-      if (error) throw error;
-      if (data) setProfessional(data);
+        .maybeSingle();
+      if (byIdError && byIdError.code !== "PGRST116") throw byIdError;
+      if (byId) resolvedProfessional = byId as Professional;
+
+      // 2) Se logado como profissional específico e ainda não encontrou, tenta pelo e-mail
+      if (!resolvedProfessional && session?.user?.email === "barber@admin.com") {
+        const { data: byEmail, error: byEmailError } = await supabase
+          .from("professionals")
+          .select("id, name, phone_number")
+          .eq("email", session.user.email!)
+          .maybeSingle();
+        if (byEmailError && byEmailError.code !== "PGRST116") throw byEmailError;
+        if (byEmail) resolvedProfessional = byEmail as Professional;
+      }
+
+      // 3) Como último recurso, busca qualquer profissional existente
+      if (!resolvedProfessional) {
+        const { data: anyProf, error: anyProfError } = await supabase
+          .from("professionals")
+          .select("id, name, phone_number")
+          .limit(1)
+          .maybeSingle();
+        if (anyProfError && anyProfError.code !== "PGRST116") throw anyProfError;
+        if (anyProf) resolvedProfessional = anyProf as Professional;
+      }
+
+      if (resolvedProfessional) {
+        setProfessional(resolvedProfessional);
+      } else {
+        setError("Nenhum profissional cadastrado.");
+      }
     } catch (err) {
       setError("Erro ao carregar informações do profissional");
     }
@@ -108,12 +131,12 @@ export default function BookingForm() {
     }
   };
 
-  const fetchExistingAppointments = async () => {
+  const fetchExistingAppointments = async (professionalId?: string) => {
     try {
       const { data, error } = await supabase
         .from("appointments")
         .select("date, time")
-        .eq("professional_id", DEFAULT_PROFESSIONAL_ID);
+        .eq("professional_id", professionalId ?? DEFAULT_PROFESSIONAL_ID);
       if (error) throw error;
       if (data) setExistingAppointments(data);
     } catch (err) {
